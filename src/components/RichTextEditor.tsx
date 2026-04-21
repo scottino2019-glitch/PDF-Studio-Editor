@@ -78,37 +78,53 @@ export function RichTextEditor({ pastedText, onInsertDone }: RichTextEditorProps
       const element = document.querySelector('.tiptap') as HTMLElement;
       if (!element) return;
 
+      // Temporary style to ensure full content is captured without clipping
+      const originalStyle = element.style.cssText;
+      element.style.height = 'auto';
+      element.style.overflow = 'visible';
+
       const canvas = await html2canvas(element, {
-        scale: 1.5, // Slightly lower scale for better performance on mobile/large docs
+        scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
+
+      // Restore original style
+      element.style.cssText = originalStyle;
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      // Basic support for multi-page (very basic)
+      const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      let heightLeft = pdfHeight;
-      let position = 0;
+      const margin = 10; // 10mm margins
+      const contentWidth = pageWidth - (margin * 2);
+      
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = margin;
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
+      // Add the first page
+      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - margin * 2);
 
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
+      // Add subsequent pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + margin;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - margin * 2);
       }
 
       pdf.save('note_LexiSync.pdf');
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Si è verificato un errore durante l'esportazione. Riprova con un testo più breve.");
+      alert("Si è verificato un errore durante l'esportazione. Riprova con un testo più breve o riprova tra poco.");
     } finally {
       setIsExporting(false);
     }
