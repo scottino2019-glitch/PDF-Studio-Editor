@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileUp, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileUp, Loader2, ArrowRightToLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -103,8 +103,9 @@ export function PdfViewer({ file, onCopy }: PdfViewerProps) {
             size="sm" 
             className="h-7 text-[10px] font-bold gap-1 md:gap-2 bg-white hover:border-indigo-400 text-indigo-600 border-slate-300 px-2 md:px-3 shadow-sm active:bg-indigo-50"
             onClick={handleCopy}
+            title="Copia il testo selezionato nell'editor sottostante"
           >
-            <FileUp className="h-3 w-3" />
+            <ArrowRightToLine className="h-3 w-3" />
             <span className="hidden xs:inline">Copia nell'Editor</span>
           </Button>
         </div>

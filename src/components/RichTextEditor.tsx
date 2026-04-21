@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -10,7 +10,7 @@ import {
   Bold, Italic, Underline as UnderlineIcon, 
   List, ListOrdered, AlignLeft, AlignCenter, 
   AlignRight, Heading1, Heading2, Download,
-  Type
+  Type, Loader2
 } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
 import { Button } from '@/components/ui/button';
@@ -34,9 +34,11 @@ const FONT_FAMILIES = [
 
 interface RichTextEditorProps {
   pastedText?: string;
+  onInsertDone?: () => void;
 }
 
-export function RichTextEditor({ pastedText }: RichTextEditorProps) {
+export function RichTextEditor({ pastedText, onInsertDone }: RichTextEditorProps) {
+  const [isExporting, setIsExporting] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -59,29 +61,57 @@ export function RichTextEditor({ pastedText }: RichTextEditorProps) {
   // Handle incoming pasted text from PDF
   useEffect(() => {
     if (editor && pastedText) {
-      editor.chain().focus().insertContent(`<p>${pastedText}</p>`).run();
+      // Split to get the clean text (ignoring the timestamp ID we added in App.tsx)
+      const cleanText = pastedText.split('||')[0];
+      editor.chain().focus().insertContent(`<p>${cleanText}</p>`).run();
+      
+      // Notify parent we are done so it can reset the state
+      if (onInsertDone) onInsertDone();
     }
-  }, [editor, pastedText]);
+  }, [editor, pastedText, onInsertDone]);
 
   const exportToPdf = async () => {
-    if (!editor) return;
+    if (!editor || isExporting) return;
     
-    const element = document.querySelector('.tiptap') as HTMLElement;
-    if (!element) return;
+    setIsExporting(true);
+    try {
+      const element = document.querySelector('.tiptap') as HTMLElement;
+      if (!element) return;
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save('documento_esportato.pdf');
+      const canvas = await html2canvas(element, {
+        scale: 1.5, // Slightly lower scale for better performance on mobile/large docs
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#FFFFFF'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // Basic support for multi-page (very basic)
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save('note_LexiSync.pdf');
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Si è verificato un errore durante l'esportazione. Riprova con un testo più breve.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (!editor) return null;
@@ -169,11 +199,18 @@ export function RichTextEditor({ pastedText }: RichTextEditorProps) {
 
         <Button 
           size="sm" 
+          disabled={isExporting}
           className="h-8 gap-1 md:gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-2 md:px-4 shadow-sm shrink-0" 
           onClick={exportToPdf}
         >
-          <Download className="h-3.5 w-3.5" />
-          <span className="hidden xs:inline">Esporta Note</span>
+          {isExporting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          <span className="hidden xs:inline">
+            {isExporting ? 'Esportazione...' : 'Esporta Note'}
+          </span>
         </Button>
       </div>
 

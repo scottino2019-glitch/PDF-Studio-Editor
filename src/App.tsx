@@ -33,7 +33,13 @@ export default function App() {
   }, []);
 
   const handleCopyToEditor = (text: string) => {
-    setPastedText(text);
+    // Adding a timestamp or unique ID ensures the effect in RichTextEditor triggers 
+    // even if the exact same text is copied twice
+    setPastedText(text + '||' + Date.now());
+  };
+
+  const handleInsertDone = () => {
+    setPastedText('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +80,7 @@ export default function App() {
               />
               <div className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-1.5 rounded-md text-xs md:text-sm font-medium transition-all shadow-sm active:scale-95">
                 <FileText size={16} />
-                <span className="hidden xs:inline">Carica PDF</span>
+                <span className="hidden xs:inline">Apri PDF</span>
               </div>
             </label>
           </div>
@@ -91,7 +97,7 @@ export default function App() {
             <ResizableHandle className={isMobile ? "h-px bg-slate-300" : "w-px bg-slate-300"} />
             <ResizablePanel defaultSize={isMobile ? 60 : 50} minSize={20}>
               <div className="h-full">
-                <RichTextEditor pastedText={pastedText} />
+                <RichTextEditor pastedText={pastedText} onInsertDone={handleInsertDone} />
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
