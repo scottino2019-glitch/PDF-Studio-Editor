@@ -1,0 +1,6 @@
+{
+  "name": "PDF Studio Editor",
+  "description": "Un lettore PDF integrato con un editor di testo avanzato per prendere appunti, formattare ed esportare in PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
